@@ -1,48 +1,39 @@
-const express = require("express");
-
-
-const app = express();
-
-
-/********Mostrar productos*****************/
-const fs = require ("fs");
-const productsGet = (req , res ) => {
-    fs.readFile('./productos.txt','utf-8', (error, data) => {
-        if (error) throw error;
-        const products  = JSON.parse(data);
-        res.json({
-            products
-        });
-    });
-}
-/****************************************/
-
-/*********Producto random****************/
-
-
-const random = (req , res ) => {
-    fs.readFile('./productos.txt','utf-8', (error, data) => {
-        if (error) throw error;
-        const products  = JSON.parse(data);
-        const productRandom = Math.floor(Math.random()*products.length)
-        res.json({
-            product: products[productRandom]
-        });
-    });
-}
-/****************************************/
-
-
-app.get('/productos', productsGet)
-
-app.get('/productoRandom', random )
-
-
+const express = require('express');
+const {Contenedor} = require('./contenedor');
 const PORT = 8080;
 
-const server = app.listen(PORT,()=>{
-    console.log(`Servidor HTTP escuchando en puerto http://localhost:${PORT}`)
+const app = express();
+const server = app.listen(PORT, () => {
+    console.log(`Servidor HTTP escuchando en el puerto ${server.address().port}`);
+});
+server.on('error', error => console.log(`Error en el servidor: ${error}`));
+
+
+app.get('/productos', async (req, res) => {
+    try {
+        const c = new Contenedor('productos.txt', ['title', 'price', 'thumbnail'], 'title');
+        const allProducts = await c.getAll();
+        res.json(allProducts);
+    } catch (err) {
+        console.log(err);
+        res.status(500).send("Houston, we have a problem");
+    }
 });
 
-
-server.on('error',(error)=> console.log(error));
+app.get('/productoRandom', async (req, res) => {
+  try {
+    const c = new Contenedor('productos.txt', ['title', 'price', 'thumbnail'], 'title');
+    const allProducts = await c.getAll();
+    const allIds = allProducts.map(item => item.id);
+    if (allIds.length === 0) {
+        res.send("Ups! parece que nos hemos quedado sin productos!");
+    } else {
+      const index = Math.floor(Math.random() * allIds.length);
+        const oneProduct = await c.getById(allIds[index]);
+        res.json(oneProduct);
+    }
+  } catch (err) {
+    console.log(err);
+    res.status(500).send("Houston, we have a problem");
+  }
+});
